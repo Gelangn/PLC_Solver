@@ -693,16 +693,10 @@ document.addEventListener('DOMContentLoaded', function() {
             const salida = datos.salidas.find(s => s.id === condicion.salidaId);
             
             condicion.terminos.forEach(termino => {
-                // Ahora tenemos tres líneas:
-                // Línea 1: Direcciones
-                let linea1 = '|';
-                // Línea 2: Nombres
-                let linea2 = '|';
-                // Línea 3: Símbolos de contactos y bobina
-                let linea3 = '|';
-                
-                // Posición actual para alinear las direcciones
-                let posActual = 1;
+                // Líneas para cada rung
+                let linea1 = '|'; // Direcciones
+                let linea2 = '|'; // Nombres
+                let linea3 = '|'; // Símbolos de contactos
                 
                 // Generar contactos para cada entrada en el término
                 termino.entradas.forEach((e, i) => {
@@ -713,59 +707,41 @@ document.addEventListener('DOMContentLoaded', function() {
                     // Ajustar según si es NA o NC
                     const usarInvertida = (normalmente === 'abierto') ? invertida : !invertida;
                     
-                    // Símbolos de contactos corregidos:
-                    // [-     -] para NA (vacío dentro)
-                    // [-/    -] para NC (con barra dentro)
-                    const simboloContacto = usarInvertida ? '[-/    -]' : '[-     -]';
+                    // Símbolo del contacto
+                    const simboloContacto = usarInvertida ? '[   /   ]' : '[       ]';
+                    const anchoContacto = simboloContacto.length;
                     
-                    // Añadir espacio si no es el primer contacto
+                    // Añadir separador si no es el primer contacto
                     if (i > 0) {
-                        linea1 += '----';
-                        linea2 += '----';
-                        linea3 += '----';
-                        posActual += 4;
+                        linea1 += '--------';
+                        linea2 += '--------';
+                        linea3 += '--------';
                     }
                     
-                    // Añadir contacto
-                    linea1 += ' '.repeat(simboloContacto.length);
-                    linea2 += entrada.nombre.padEnd(simboloContacto.length, ' ');
+                    // Centrar dirección y nombre en el espacio del contacto
+                    const direccionCentrada = centrarTexto(entrada.direccion, anchoContacto);
+                    const nombreCentrado = centrarTexto(entrada.nombre, anchoContacto);
+                    
+                    // Añadir elementos alineados
+                    linea1 += direccionCentrada;
+                    linea2 += nombreCentrado;
                     linea3 += simboloContacto;
-                    
-                    // Calcular posición para la dirección (centrada bajo el contacto)
-                    const posDireccion = posActual + Math.floor((simboloContacto.length - entrada.direccion.length) / 2);
-                    
-                    // Añadir espacios hasta la posición calculada
-                    while (linea1.length < posDireccion) {
-                        linea1 += ' ';
-                    }
-                    
-                    // Añadir dirección
-                    linea1 += entrada.direccion;
-                    
-                    // Actualizar posición actual
-                    posActual += simboloContacto.length;
                 });
                 
-                // Añadir la bobina al final de la línea (corregida)
-                linea1 += '----(     )-------|';
-                linea2 += ' '.repeat(5) + salida.nombre.padEnd(5, ' ') + ' '.repeat(8) + '|';
-                linea3 += '----(     )-------|';
+                // Añadir bobina (salida)
+                const anchoBobina = 16; // Ancho fijo para la bobina
+                const direccionCentrada = centrarTexto(salida.direccion, anchoBobina);
+                const nombreCentrado = centrarTexto(salida.nombre, anchoBobina);
                 
-                // Añadir la dirección de la salida bajo la bobina
-                const posSalida = posActual + 5 - Math.floor(salida.direccion.length / 2);
-                
-                // Añadir espacios hasta la posición calculada
-                while (linea1.length < posSalida) {
-                    linea1 += ' ';
-                }
-                
-                linea1 += salida.direccion + ' '.repeat(15) + '|';
+                linea1 += '----' + direccionCentrada + '----|';
+                linea2 += '----' + nombreCentrado + '----|';
+                linea3 += '-------(     )-------|';
                 
                 // Añadir líneas al diagrama
                 ladder += linea1 + '\n';
                 ladder += linea2 + '\n';
                 ladder += linea3 + '\n';
-                ladder += '|' + ' '.repeat(70) + '|\n'; // Línea en blanco para separar
+                ladder += '|' + ' '.repeat(70) + '|\n'; // Línea separadora
             });
         });
         
@@ -775,6 +751,14 @@ document.addEventListener('DOMContentLoaded', function() {
             expresion: expresiones.join('\n'),
             ladder: ladder
         };
+        
+        // Función auxiliar para centrar texto en un ancho dado
+        function centrarTexto(texto, ancho) {
+            const espacios = ancho - texto.length;
+            const izquierda = Math.floor(espacios / 2);
+            const derecha = espacios - izquierda;
+            return ' '.repeat(izquierda) + texto + ' '.repeat(derecha);
+        }
     }
 
     // En producción, esto se reemplazaría por una llamada real a la API
