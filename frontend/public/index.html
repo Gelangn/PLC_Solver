@@ -1,4 +1,3 @@
-/index.html -->
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -10,30 +9,84 @@
 <body>
     <header>
         <h1>Optimizador de Programas PLC</h1>
-        <p>Basado en el algoritmo Quine-McCluskey</p>
+        <p>Implementación del algoritmo Quine-McCluskey para generar diagramas Ladder óptimos</p>
     </header>
 
     <main>
         <div class="container">
             <div class="panel entrada">
-                <h2>Tabla de Verdad</h2>
-                <div id="tabla-entradas">
-                    <!-- Aquí se generará la tabla dinámicamente -->
+                <h2>Configuración y Tabla de Verdad</h2>
+                
+                <div class="config-section">
+                    <label for="num-variables">Número de variables:</label>
+                    <input type="number" id="num-variables" min="2" max="8" value="3">
+                    <button id="btn-actualizar-tabla">Actualizar Tabla</button>
                 </div>
-                <div class="controles">
-                    <button id="btn-variables">Ajustar Variables</button>
-                    <button id="btn-optimizar">Optimizar</button>
+                
+                <div class="variable-names-section">
+                    <h3>Nombres de Variables</h3>
+                    <div id="variable-names-container">
+                        <!-- Se generará dinámicamente -->
+                    </div>
+                </div>
+                
+                <div class="truth-table-section">
+                    <h3>Tabla de Verdad</h3>
+                    <div class="tabla-scroll">
+                        <table id="tabla-verdad">
+                            <thead>
+                                <tr id="encabezado-tabla">
+                                    <!-- Se generará dinámicamente -->
+                                </tr>
+                            </thead>
+                            <tbody id="cuerpo-tabla">
+                                <!-- Se generará dinámicamente -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                
+                <div class="minterms-section">
+                    <h3>Mintérminos seleccionados</h3>
+                    <div id="minterms-selected">Ninguno seleccionado</div>
+                </div>
+                
+                <div class="actions-section">
+                    <button id="btn-optimizar" class="btn-primary">Optimizar Función</button>
+                    <button id="btn-reset" class="btn-secondary">Reiniciar</button>
                 </div>
             </div>
 
             <div class="panel resultado">
-                <h2>Diagrama Ladder</h2>
-                <div id="diagrama-ladder">
-                    <!-- Aquí se mostrará el diagrama optimizado -->
+                <h2>Resultados</h2>
+                
+                <div class="result-section">
+                    <h3>Expresión Booleana Minimizada</h3>
+                    <div id="expresion-minimizada" class="result-box">
+                        Esperando optimización...
+                    </div>
+                </div>
+                
+                <div class="result-section">
+                    <h3>Diagrama Ladder</h3>
+                    <div id="diagrama-ladder" class="result-box ladder-diagram">
+                        Esperando optimización...
+                    </div>
+                </div>
+                
+                <div class="result-section">
+                    <h3>Implicantes Primos Esenciales</h3>
+                    <div id="implicantes-esenciales" class="result-box">
+                        Esperando optimización...
+                    </div>
                 </div>
             </div>
         </div>
     </main>
+
+    <footer>
+        <p>© 2025 - Solucionador Quine-McCluskey para PLCs</p>
+    </footer>
 
     <script src="js/app.js"></script>
 </body>
