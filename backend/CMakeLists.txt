@@ -10,8 +10,10 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
 # Agregar biblioteca para el optimizador PLC
 add_library(plc_optimizer_lib
     src/algoritmos/QuineMcCluskey.cpp
+    src/algoritmos/LadderGenerator.cpp
     src/modelos/Implicante.cpp
     src/modelos/Termino.cpp
+    src/api/Server.cpp
     src/api/OptimizacionHandler.cpp
 )
 

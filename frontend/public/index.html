@@ -3,90 +3,139 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Optimizador PLC - Quine-McCluskey</title>
+    <title>Optimizador PLC - Generador de Lógica</title>
     <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
     <header>
         <h1>Optimizador de Programas PLC</h1>
-        <p>Implementación del algoritmo Quine-McCluskey para generar diagramas Ladder óptimos</p>
+        <p>Diseño de lógica Ladder optimizada para controladores PLC</p>
     </header>
 
     <main>
         <div class="container">
             <div class="panel entrada">
-                <h2>Configuración y Tabla de Verdad</h2>
+                <h2>Definición de Señales</h2>
                 
-                <div class="config-section">
-                    <label for="num-variables">Número de variables:</label>
-                    <input type="number" id="num-variables" min="2" max="8" value="3">
-                    <button id="btn-actualizar-tabla">Actualizar Tabla</button>
-                </div>
-                
-                <div class="variable-names-section">
-                    <h3>Nombres de Variables</h3>
-                    <div id="variable-names-container">
-                        <!-- Se generará dinámicamente -->
-                    </div>
-                </div>
-                
-                <div class="truth-table-section">
-                    <h3>Tabla de Verdad</h3>
-                    <div class="tabla-scroll">
-                        <table id="tabla-verdad">
+                <!-- Sección de Entradas -->
+                <div class="signals-section">
+                    <h3>Entradas</h3>
+                    <div class="signals-table-container">
+                        <table id="entradas-tabla" class="signals-table">
                             <thead>
-                                <tr id="encabezado-tabla">
-                                    <!-- Se generará dinámicamente -->
+                                <tr>
+                                    <th>Nombre</th>
+                                    <th>Dirección</th>
+                                    <th>Descripción</th>
+                                    <th>Normalmente</th>
+                                    <th>Acciones</th>
                                 </tr>
                             </thead>
-                            <tbody id="cuerpo-tabla">
-                                <!-- Se generará dinámicamente -->
+                            <tbody id="entradas-cuerpo">
+                                <!-- Filas de entradas se generarán dinámicamente -->
                             </tbody>
                         </table>
+                        <button id="btn-agregar-entrada" class="btn-secundario">+ Agregar Entrada</button>
                     </div>
                 </div>
                 
-                <div class="minterms-section">
-                    <h3>Mintérminos seleccionados</h3>
-                    <div id="minterms-selected">Ninguno seleccionado</div>
+                <!-- Sección de Salidas -->
+                <div class="signals-section">
+                    <h3>Salidas</h3>
+                    <div class="signals-table-container">
+                        <table id="salidas-tabla" class="signals-table">
+                            <thead>
+                                <tr>
+                                    <th>Nombre</th>
+                                    <th>Dirección</th>
+                                    <th>Descripción</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="salidas-cuerpo">
+                                <!-- Filas de salidas se generarán dinámicamente -->
+                            </tbody>
+                        </table>
+                        <button id="btn-agregar-salida" class="btn-secundario">+ Agregar Salida</button>
+                    </div>
+                </div>
+                
+                <!-- Sección de Lógica -->
+                <div class="logic-section">
+                    <h3>Definición de Lógica</h3>
+                    <div class="logic-container">
+                        <div id="condiciones-container">
+                            <!-- Contenedor para las condiciones -->
+                        </div>
+                        <button id="btn-agregar-condicion" class="btn-secundario">+ Agregar Condición</button>
+                    </div>
                 </div>
                 
                 <div class="actions-section">
-                    <button id="btn-optimizar" class="btn-primary">Optimizar Función</button>
+                    <button id="btn-generar" class="btn-primary">Generar Diagrama Ladder</button>
                     <button id="btn-reset" class="btn-secondary">Reiniciar</button>
                 </div>
             </div>
 
             <div class="panel resultado">
-                <h2>Resultados</h2>
+                <h2>Diagrama Ladder Optimizado</h2>
                 
                 <div class="result-section">
-                    <h3>Expresión Booleana Minimizada</h3>
-                    <div id="expresion-minimizada" class="result-box">
-                        Esperando optimización...
-                    </div>
-                </div>
-                
-                <div class="result-section">
-                    <h3>Diagrama Ladder</h3>
+                    <h3>Diagrama Generado</h3>
                     <div id="diagrama-ladder" class="result-box ladder-diagram">
-                        Esperando optimización...
+                        Esperando generación de diagrama...
                     </div>
                 </div>
                 
                 <div class="result-section">
-                    <h3>Implicantes Primos Esenciales</h3>
-                    <div id="implicantes-esenciales" class="result-box">
-                        Esperando optimización...
+                    <h3>Expresión Lógica</h3>
+                    <div id="expresion-minimizada" class="result-box">
+                        Esperando generación de diagrama...
                     </div>
+                </div>
+                
+                <div class="download-section">
+                    <button id="btn-exportar" class="btn-primary" disabled>Exportar Diagrama</button>
+                    <select id="formato-exportacion">
+                        <option value="texto">Texto</option>
+                        <option value="imagen">Imagen</option>
+                    </select>
                 </div>
             </div>
         </div>
     </main>
 
     <footer>
-        <p>© 2025 - Solucionador Quine-McCluskey para PLCs</p>
+        <p>© 2025 - Generador de Lógica PLC Optimizada</p>
     </footer>
+
+    <!-- Modal para editar condiciones -->
+    <div id="modal-condicion" class="modal">
+        <div class="modal-content">
+            <span class="modal-close">&times;</span>
+            <h3>Definir Condición</h3>
+            
+            <div class="modal-form">
+                <div class="form-group">
+                    <label for="condicion-salida">Salida:</label>
+                    <select id="condicion-salida"></select>
+                </div>
+                
+                <div class="form-group">
+                    <label>Se activa cuando:</label>
+                    <div id="condicion-entradas-container">
+                        <!-- Aquí se generan las entradas dinámicamente -->
+                    </div>
+                    <button id="btn-agregar-termino" class="btn-secundario">+ Agregar Término</button>
+                </div>
+            </div>
+            
+            <div class="modal-actions">
+                <button id="btn-guardar-condicion" class="btn-primary">Guardar</button>
+                <button id="btn-cancelar-condicion" class="btn-secondary">Cancelar</button>
+            </div>
+        </div>
+    </div>
 
     <script src="js/app.js"></script>
 </body>

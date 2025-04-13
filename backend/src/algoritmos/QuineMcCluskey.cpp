@@ -194,3 +194,36 @@ std::vector<Implicante> QuineMcCluskey::encontrarImplicantesEsenciales() {
             Implicante* implicante = par.second[0];
             implicante->setEsImplicanteEsencial(true);
             implicantesEsencialesPtrs.insert(implicante);
+        }
+    }
+    
+    // Convertir punteros a implicantes esenciales
+    for (Implicante* ptr : implicantesEsencialesPtrs) {
+        resultado.push_back(*ptr);
+    }
+    
+    return resultado;
+}
+
+std::vector<Implicante> QuineMcCluskey::getImplicantesEsenciales() const {
+    return implicantesEsenciales;
+}
+
+std::string QuineMcCluskey::obtenerExpresionMinimizada() const {
+    if (implicantesEsenciales.empty()) {
+        return "0"; // Si no hay implicantes esenciales, la función es 0
+    }
+    
+    std::stringstream ss;
+    bool primerTermino = true;
+    
+    for (const Implicante& implicante : implicantesEsenciales) {
+        if (!primerTermino) {
+            ss << " + ";
+        }
+        ss << implicante.aExpresionBooleana(nombreVariables);
+        primerTermino = false;
+    }
+    
+    return ss.str();
+}
