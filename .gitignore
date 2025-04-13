@@ -1,0 +1,23 @@
+# Archivos compilados
+*.o
+*.obj
+*.exe
+*.out
+
+# Directorios de compilación
+/backend/build/
+/backend/bin/
+/backend/lib/
+
+# Dependencias y paquetes
+/node_modules/
+
+# Archivos de configuración de IDE
+.vscode/
+.idea/
+*.suo
+*.user
+
+# Archivos del sistema
+.DS_Store
+Thumbs.db
