@@ -32,6 +32,13 @@ header h1 {
     margin-bottom: 0.5rem;
 }
 
+/* Añade esto a tu archivo styles.css */
+header .subtitulo {
+    margin-top: 8px;
+    color: #6c757d;
+    font-size: 0.9rem;
+}
+
 main {
     padding: 2rem;
 }
@@ -532,4 +539,18 @@ footer {
     padding: 5px;
     background-color: #f8f8f8;
     border-radius: 3px;
+}
+
+/* Añadir al final de tu archivo CSS */
+#ladderDiagram {
+    width: 100%;
+    height: 800px; /* Altura base mayor */
+    border: 1px solid #d3d3d3;
+    background-color: #f9f9f9;
+    overflow: auto; /* Cambiar de hidden a auto */
+}
+
+/* Estilos para los nodos del diagrama */
+.mxCellEditor {
+    font-family: Arial, sans-serif;
 }

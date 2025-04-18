@@ -697,12 +697,20 @@ document.addEventListener('DOMContentLoaded', function() {
             diagramaLadder.textContent = "Procesando...";
             expresionMinimizada.textContent = "Procesando...";
             
-            // Llamar al backend real en lugar de simular
+            // Llamar al backend real
             const respuesta = await llamarAPI(datos);
             
-            // Actualizar interfaz con los resultados
+            // Actualizar expresión minimizada
             expresionMinimizada.textContent = respuesta.expresion;
-            diagramaLadder.textContent = respuesta.ladder;
+            
+            // Limpiar el contenedor original de texto
+            diagramaLadder.style.display = 'none';
+            
+            // Mostrar el contenedor del diagrama gráfico
+            document.getElementById('ladderDiagram').style.display = 'block';
+            
+            // Crear el diagrama Ladder visual con mxGraph
+            window.ladderGraph = createLadderDiagram("ladderDiagram", datos);
             
             // Habilitar botón de exportar
             btnExportar.disabled = false;
@@ -897,24 +905,39 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
+    // Actualizar la función exportarDiagrama
     function exportarDiagrama() {
         const formato = document.getElementById('formato-exportacion').value;
-        const contenido = diagramaLadder.textContent;
         
-        if (formato === 'texto') {
-            // Exportar como archivo de texto
+        if (formato === 'png' || formato === 'jpg') {
+            if (window.ladderGraph) {
+                // Usar la función de exportación de mxGraph
+                const imgData = exportLadderDiagram(window.ladderGraph, formato);
+                
+                if (imgData) {
+                    // Crear un enlace para descargar la imagen
+                    const a = document.createElement('a');
+                    a.href = imgData;
+                    a.download = `diagrama-ladder.${formato}`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                } else {
+                    alert('Error al exportar la imagen');
+                }
+            }
+        } else if (formato === 'txt') {
+            // Para texto, usar la expresión minimizada
+            const contenido = expresionMinimizada.textContent;
             const blob = new Blob([contenido], { type: 'text/plain' });
             const url = URL.createObjectURL(blob);
             
             const a = document.createElement('a');
             a.href = url;
             a.download = 'diagrama-ladder.txt';
+            document.body.appendChild(a);
             a.click();
-            
-            URL.revokeObjectURL(url);
-        } else if (formato === 'imagen') {
-            alert('La exportación a imagen estará disponible en una versión futura.');
-            // Aquí se implementaría la conversión a imagen usando canvas o una biblioteca
+            document.body.removeChild(a);
         }
     }
 
