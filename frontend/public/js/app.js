@@ -707,9 +707,30 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // Reemplaza la función simularLlamadaAPI con esta versión modificada
     function simularLlamadaAPI(datos) {
         console.log('Datos enviados a la API:', datos);
+        
+        // Definir la función mostrarAnchos aquí, dentro del ámbito de simularLlamadaAPI
+        function mostrarAnchos() {
+            console.log("anchoTotal:", anchoTotal);
+            console.log("anchoMaximoRung:", anchoMaximoRung);
+            
+            // Solo mostrar información de líneas si están definidas
+            if (typeof linea1 !== 'undefined') {
+                console.log("Longitud línea 1:", linea1.length);
+                console.log("Espacio restante 1:", espacioRestante1);
+            }
+            
+            if (typeof linea2 !== 'undefined') {
+                console.log("Longitud línea 2:", linea2.length);
+                console.log("Espacio restante 2:", espacioRestante2);
+            }
+            
+            if (typeof linea3 !== 'undefined') {
+                console.log("Longitud línea 3:", linea3.length);
+                console.log("Espacio restante 3:", espacioRestante3);
+            }
+        }
         
         // Convertir condiciones a expresiones
         const expresiones = datos.condiciones.map(condicion => {
@@ -732,11 +753,45 @@ document.addEventListener('DOMContentLoaded', function() {
             return `${salida.nombre} = ${terminosTexto}`;
         });
         
-        // Generar diagrama Ladder con el nuevo formato
+        // PRIMERA FASE: Calcular el ancho máximo necesario
+        let anchoMaximoRung = 0;
+        
+        // Hacer un recorrido previo para calcular el ancho máximo
+        datos.condiciones.forEach(condicion => {
+            const salida = datos.salidas.find(s => s.id === condicion.salidaId);
+            
+            condicion.terminos.forEach(termino => {
+                // Calcular ancho para este rung
+                let anchoRung = 1; // Iniciar con el borde izquierdo '|'
+                
+                // Ancho para los contactos
+                termino.entradas.forEach((e, i) => {
+                    if (i > 0) anchoRung += 8; // Separador entre contactos
+                    anchoRung += 9; // Ancho del símbolo del contacto (---[ ]---)
+                });
+                
+                // Ancho para la bobina
+                const anchoBobina = Math.max(16, 10 + Math.max(salida.direccion.length, salida.nombre.length));
+                anchoRung += 8 + anchoBobina; // Espacios alrededor + ancho de bobina
+                
+                // Actualizar el ancho máximo si este rung es más ancho
+                anchoMaximoRung = Math.max(anchoMaximoRung, anchoRung);
+            });
+        });
+        
+        // Añadir margen para evitar que quede muy justo
+        anchoMaximoRung += 2;
+        
+        // SEGUNDA FASE: Generar el diagrama con ancho fijo
+        let anchoTotal = Math.max(60, anchoMaximoRung); // Usar al menos 60 de ancho
+        
+        // Definir la posición fija para las bobinas desde la derecha
+        const posicionBobina = anchoTotal - 20; // 20 caracteres desde el borde derecho
+        
         // Cabecera del diagrama
-        let ladder = '+' + '-'.repeat(70) + '+\n';
-        ladder += '|' + ' '.repeat(15) + 'DIAGRAMA LADDER PLC (IEC 61131-3)' + ' '.repeat(15) + '|\n';
-        ladder += '+' + '-'.repeat(70) + '+\n';
+        let ladder = '+' + '-'.repeat(anchoTotal) + '+\n';
+        ladder += '|' + centrarTexto('DIAGRAMA LADDER PLC (IEC 61131-3)', anchoTotal) + '|\n';
+        ladder += '+' + '-'.repeat(anchoTotal) + '+\n';
         
         // Generar cada rung (línea) del ladder
         datos.condiciones.forEach(condicion => {
@@ -757,14 +812,16 @@ document.addEventListener('DOMContentLoaded', function() {
                     // Ajustar según si es NA o NC
                     const usarInvertida = (normalmente === 'abierto') ? invertida : !invertida;
                     
-                    // Símbolo del contacto
-                    const simboloContacto = usarInvertida ? '[   /   ]' : '[       ]';
+                    // Símbolos simplificados para contactos (mantenemos estos con guiones)
+                    const simboloContacto = usarInvertida ? '---[/]---' : '---[ ]---';
                     const anchoContacto = simboloContacto.length;
                     
                     // Añadir separador si no es el primer contacto
                     if (i > 0) {
-                        linea1 += '--------';
-                        linea2 += '--------';
+                        // Para líneas de texto usamos espacios, no guiones
+                        linea1 += ' '.repeat(8);
+                        linea2 += ' '.repeat(8);
+                        // Solo para la línea de símbolos usamos guiones
                         linea3 += '--------';
                     }
                     
@@ -778,24 +835,43 @@ document.addEventListener('DOMContentLoaded', function() {
                     linea3 += simboloContacto;
                 });
                 
-                // Añadir bobina (salida)
-                const anchoBobina = 16; // Ancho fijo para la bobina
+                // Añadir bobina (salida) alineada a la derecha
+                const anchoBobina = Math.max(16, 10 + Math.max(salida.direccion.length, salida.nombre.length));
                 const direccionCentrada = centrarTexto(salida.direccion, anchoBobina);
                 const nombreCentrado = centrarTexto(salida.nombre, anchoBobina);
                 
-                linea1 += '----' + direccionCentrada + '----|';
-                linea2 += '----' + nombreCentrado + '----|';
-                linea3 += '-------(     )-------|';
+                // Calcular el espacio disponible entre el último contacto y donde debe empezar la bobina
+                const espacioEntreContactosYBobina = posicionBobina - linea3.length;
                 
-                // Añadir líneas al diagrama
-                ladder += linea1 + '\n';
-                ladder += linea2 + '\n';
-                ladder += linea3 + '\n';
-                ladder += '|' + ' '.repeat(70) + '|\n'; // Línea separadora
+                // Rellenar el espacio con guiones o espacios según corresponda
+                if (espacioEntreContactosYBobina > 0) {
+                    linea1 += ' '.repeat(espacioEntreContactosYBobina);
+                    linea2 += ' '.repeat(espacioEntreContactosYBobina);
+                    linea3 += '-'.repeat(espacioEntreContactosYBobina);
+                }
+                
+                // Añadir las etiquetas y bobina (ahora todos alineados a la misma posición)
+                linea1 += direccionCentrada;
+                linea2 += nombreCentrado;
+                linea3 += '( )';
+                
+                // Completar hasta el ancho total
+                const espacioRestante1 = anchoTotal - linea1.length;
+                const espacioRestante2 = anchoTotal - linea2.length;
+                const espacioRestante3 = anchoTotal - linea3.length;
+                
+                // Ahora es seguro llamar a mostrarAnchos() porque todas las variables están definidas
+                mostrarAnchos();
+                
+                ladder += linea1 + ' '.repeat(espacioRestante1) + '|\n';
+                ladder += linea2 + ' '.repeat(espacioRestante2) + '|\n';
+                ladder += linea3 + '-'.repeat(espacioRestante3) + '|\n';
+                ladder += '|' + ' '.repeat(anchoTotal - 1) + '|\n';
             });
         });
         
-        ladder += '+' + '-'.repeat(70) + '+\n';
+        // Y también en el pie
+        ladder += '+' + '-'.repeat(anchoTotal) + '+\n';
         
         return {
             expresion: expresiones.join('\n'),
@@ -804,10 +880,15 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Función auxiliar para centrar texto en un ancho dado
         function centrarTexto(texto, ancho) {
-            const espacios = ancho - texto.length;
+            // Si el texto es más largo que el ancho disponible, truncarlo
+            const textoAjustado = texto.length > ancho ? texto.substring(0, ancho) : texto;
+            
+            // Calcular espacios necesarios (asegurando valores no negativos)
+            const espacios = Math.max(0, ancho - textoAjustado.length);
             const izquierda = Math.floor(espacios / 2);
             const derecha = espacios - izquierda;
-            return ' '.repeat(izquierda) + texto + ' '.repeat(derecha);
+            
+            return ' '.repeat(Math.max(0, izquierda)) + textoAjustado + ' '.repeat(Math.max(0, derecha));
         }
     }
 
