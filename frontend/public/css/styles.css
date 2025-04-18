@@ -494,3 +494,30 @@ footer {
     color: #777;
     font-weight: bold;
 }
+
+.subtitulo {
+    text-align: center;
+    margin-top: -10px;
+    margin-bottom: 20px;
+    font-style: italic;
+    color: #666;
+}
+
+/* Añadir después de la clase .subtitulo en tu archivo styles.css */
+.entrada-direccion, .salida-direccion {
+    width: 70px !important; /* Ancho fijo limitado */
+    min-width: 70px;
+    max-width: 70px;
+}
+
+/* Asegurarse de que los campos de nombre también tienen un ancho razonable */
+.entrada-nombre, .salida-nombre {
+    width: 120px !important;
+    min-width: 120px;
+}
+
+/* Permitir que la descripción ocupe el resto del espacio */
+.entrada-descripcion, .salida-descripcion {
+    width: auto;
+    flex-grow: 1;
+}

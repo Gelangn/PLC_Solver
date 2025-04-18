@@ -6,6 +6,36 @@ document.addEventListener('DOMContentLoaded', function() {
         condiciones: []
     };
 
+    // Añade estas funciones después de la definición del objeto estado
+    function guardarEstado() {
+        // Guardar todo el estado en localStorage
+        localStorage.setItem('plcSolverState', JSON.stringify(estado));
+    }
+
+    function cargarEstado() {
+        // Recuperar el estado desde localStorage
+        const estadoGuardado = localStorage.getItem('plcSolverState');
+        
+        if (estadoGuardado) {
+            // Si hay datos guardados, cargarlos
+            const estadoObj = JSON.parse(estadoGuardado);
+            
+            // Actualizar el estado con los datos guardados
+            estado.entradas = estadoObj.entradas || [];
+            estado.salidas = estadoObj.salidas || [];
+            estado.condiciones = estadoObj.condiciones || [];
+            
+            // Renderizar los componentes con los datos cargados
+            renderizarEntradas();
+            renderizarSalidas();
+            renderizarCondiciones();
+            
+            return true;
+        }
+        
+        return false;
+    }
+
     // Elementos DOM
     const btnAgregarEntrada = document.getElementById('btn-agregar-entrada');
     const btnAgregarSalida = document.getElementById('btn-agregar-salida');
@@ -34,8 +64,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Inicialización
     inicializarEventListeners();
-    agregarFilaEntrada(); // Agregar una entrada por defecto
-    agregarFilaSalida(); // Agregar una salida por defecto
+
+    // Intentar cargar estado guardado, si no existe crear valores por defecto
+    if (!cargarEstado()) {
+        agregarFilaEntrada(); // Agregar una entrada por defecto
+        agregarFilaSalida(); // Agregar una salida por defecto
+    }
 
     function inicializarEventListeners() {
         // Botones principales
@@ -63,13 +97,13 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Funciones para entradas
-    // Modifica la función agregarFilaEntrada para usar el formato E0.0
+    // Modifica la función agregarFilaEntrada para usar el formato I0.0 según IEC 61131-3
     function agregarFilaEntrada() {
-        // Calcula la nueva dirección en formato E0.0, E0.1, etc. considerando bloques de 16 entradas
+        // Calcula la nueva dirección en formato I0.0, I0.1, etc. considerando bloques de 16 entradas
         const entradaNum = estado.entradas.length;
-        const bloqueE = Math.floor(entradaNum / 16);
+        const bloqueI = Math.floor(entradaNum / 16);
         const subIndice = entradaNum % 16;
-        const direccion = `E${bloqueE}.${subIndice}`;
+        const direccion = `I${bloqueI}.${subIndice}`;
         
         const nuevaEntrada = {
             id: generarId('E'),
@@ -81,6 +115,7 @@ document.addEventListener('DOMContentLoaded', function() {
         
         estado.entradas.push(nuevaEntrada);
         renderizarEntradas();
+        guardarEstado(); // Añadir esta línea
     }
 
     function eliminarEntrada(id) {
@@ -101,9 +136,11 @@ document.addEventListener('DOMContentLoaded', function() {
             estado.condiciones = estado.condiciones.filter(condicion => condicion.terminos.length > 0);
             
             renderizarCondiciones();
+            guardarEstado(); // Añadir esta línea
         }
     }
 
+    // Modifica la función renderizarEntradas() para que el HTML generado quede así:
     function renderizarEntradas() {
         entradasCuerpo.innerHTML = '';
         
@@ -111,7 +148,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const fila = document.createElement('tr');
             fila.innerHTML = `
                 <td><input type="text" class="entrada-nombre" value="${entrada.nombre}" data-id="${entrada.id}"></td>
-                <td><input type="text" class="entrada-direccion" value="${entrada.direccion}" data-id="${entrada.id}"></td>
+                <td><input type="text" class="entrada-direccion" value="${entrada.direccion}" data-id="${entrada.id}" maxlength="6"></td>
                 <td><input type="text" class="entrada-descripcion" value="${entrada.descripcion}" data-id="${entrada.id}"></td>
                 <td>
                     <select class="entrada-normalmente" data-id="${entrada.id}">
@@ -175,20 +212,28 @@ document.addEventListener('DOMContentLoaded', function() {
                 renderizarCondiciones();
             }
         }
+        guardarEstado(); // Añadir esta línea
     }
 
     // Funciones para salidas
-    // Modifica la función agregarFilaSalida para usar el formato A0, A1, etc.
+    // Modifica la función agregarFilaSalida para usar el formato Q0.0 según IEC 61131-3
     function agregarFilaSalida() {
+        // Calcular la nueva dirección en formato Q0.0, Q0.1, etc.
+        const salidaNum = estado.salidas.length;
+        const bloqueQ = Math.floor(salidaNum / 16);
+        const subIndice = salidaNum % 16;
+        const direccion = `Q${bloqueQ}.${subIndice}`;
+        
         const nuevaSalida = {
             id: generarId('S'),
             nombre: `Salida${estado.salidas.length + 1}`,
-            direccion: `A${estado.salidas.length}`,
+            direccion: direccion,
             descripcion: ''
         };
         
         estado.salidas.push(nuevaSalida);
         renderizarSalidas();
+		guardarEstado();
     }
 
     function eliminarSalida(id) {
@@ -201,8 +246,10 @@ document.addEventListener('DOMContentLoaded', function() {
             estado.condiciones = estado.condiciones.filter(condicion => condicion.salidaId !== id);
             renderizarCondiciones();
         }
+		guardarEstado();
     }
 
+    // Similar para renderizarSalidas()
     function renderizarSalidas() {
         salidasCuerpo.innerHTML = '';
         
@@ -210,7 +257,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const fila = document.createElement('tr');
             fila.innerHTML = `
                 <td><input type="text" class="salida-nombre" value="${salida.nombre}" data-id="${salida.id}"></td>
-                <td><input type="text" class="salida-direccion" value="${salida.direccion}" data-id="${salida.id}"></td>
+                <td><input type="text" class="salida-direccion" value="${salida.direccion}" data-id="${salida.id}" maxlength="6"></td>
                 <td><input type="text" class="salida-descripcion" value="${salida.descripcion}" data-id="${salida.id}"></td>
                 <td>
                     <button class="btn-icon btn-eliminar-salida" data-id="${salida.id}">🗑️</button>
@@ -260,6 +307,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 renderizarCondiciones();
             }
         }
+		guardarEstado();
     }
 
     // Funciones para condiciones
@@ -438,6 +486,7 @@ document.addEventListener('DOMContentLoaded', function() {
         
         renderizarCondiciones();
         cerrarModalCondicion();
+		guardarEstado();
     }
 
     function editarCondicion(id) {
@@ -559,6 +608,7 @@ document.addEventListener('DOMContentLoaded', function() {
     function eliminarCondicion(id) {
         estado.condiciones = estado.condiciones.filter(c => c.id !== id);
         renderizarCondiciones();
+		guardarEstado();
     }
 
     function cerrarModalCondicion() {
@@ -685,7 +735,7 @@ document.addEventListener('DOMContentLoaded', function() {
         // Generar diagrama Ladder con el nuevo formato
         // Cabecera del diagrama
         let ladder = '+' + '-'.repeat(70) + '+\n';
-        ladder += '|' + ' '.repeat(24) + 'DIAGRAMA LADDER PLC' + ' '.repeat(24) + '|\n';
+        ladder += '|' + ' '.repeat(15) + 'DIAGRAMA LADDER PLC (IEC 61131-3)' + ' '.repeat(15) + '|\n';
         ladder += '+' + '-'.repeat(70) + '+\n';
         
         // Generar cada rung (línea) del ladder
@@ -817,6 +867,8 @@ document.addEventListener('DOMContentLoaded', function() {
             expresionMinimizada.textContent = 'Esperando generación de diagrama...';
             diagramaLadder.textContent = 'Esperando generación de diagrama...';
             btnExportar.disabled = true;
+            
+            guardarEstado(); // Añadir esta línea
         }
     }
 
