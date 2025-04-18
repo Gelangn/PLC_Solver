@@ -320,7 +320,8 @@ document.addEventListener('DOMContentLoaded', function() {
         estado.salidas.forEach(salida => {
             const option = document.createElement('option');
             option.value = salida.id;
-            option.textContent = salida.nombre;
+            // Mostrar nombre, dirección y descripción
+            option.textContent = `${salida.nombre} (${salida.direccion} - ${salida.descripcion})`;
             condicionSalida.appendChild(option);
         });
         
@@ -368,14 +369,15 @@ document.addEventListener('DOMContentLoaded', function() {
         const entradaDiv = document.createElement('div');
         entradaDiv.className = 'condicion-entrada';
         
-        // Selector de entrada
+        // Selector de entrada - MODIFICAR ESTA PARTE
         const selectEntrada = document.createElement('select');
         selectEntrada.className = 'entrada-selector';
         
-        estado.entradas.forEach(entrada => {
+        estado.entradas.forEach(e => {
             const option = document.createElement('option');
-            option.value = entrada.id;
-            option.textContent = entrada.nombre;
+            option.value = e.id;
+            // Mostrar nombre, dirección y descripción
+            option.textContent = `${e.nombre} (${e.direccion} - ${e.descripcion})`;
             selectEntrada.appendChild(option);
         });
         
@@ -500,7 +502,8 @@ document.addEventListener('DOMContentLoaded', function() {
         estado.salidas.forEach(salida => {
             const option = document.createElement('option');
             option.value = salida.id;
-            option.textContent = salida.nombre;
+            // Mostrar nombre, dirección y descripción
+            option.textContent = `${salida.nombre} (${salida.direccion} - ${salida.descripcion})`;
             option.selected = salida.id === condicion.salidaId;
             condicionSalida.appendChild(option);
         });
@@ -534,7 +537,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 estado.entradas.forEach(e => {
                     const option = document.createElement('option');
                     option.value = e.id;
-                    option.textContent = e.nombre;
+                    // Mostrar nombre, dirección y descripción
+                    option.textContent = `${e.nombre} (${e.direccion} - ${e.descripcion})`;
                     option.selected = e.id === entrada.id;
                     selectEntrada.appendChild(option);
                 });
@@ -675,25 +679,26 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Funciones para generar diagrama Ladder
-    function generarDiagramaLadder() {
+    async function generarDiagramaLadder() {
         if (estado.condiciones.length === 0) {
             alert('Debes definir al menos una condición para generar el diagrama.');
             return;
         }
         
-        // Convertir las condiciones a una tabla de verdad implícita
-        // y generar el código ladder optimizado
-        
-        // Enviar datos al backend
+        // Preparar los datos para el backend
         const datos = {
             entradas: estado.entradas,
             salidas: estado.salidas,
             condiciones: estado.condiciones
         };
         
-        // Llamar a la API (en este caso, simulamos la respuesta)
         try {
-            const respuesta = simularLlamadaAPI(datos);
+            // Mostrar indicador de carga
+            diagramaLadder.textContent = "Procesando...";
+            expresionMinimizada.textContent = "Procesando...";
+            
+            // Llamar al backend real en lugar de simular
+            const respuesta = await llamarAPI(datos);
             
             // Actualizar interfaz con los resultados
             expresionMinimizada.textContent = respuesta.expresion;
@@ -703,34 +708,13 @@ document.addEventListener('DOMContentLoaded', function() {
             btnExportar.disabled = false;
         } catch (error) {
             console.error('Error al generar el diagrama:', error);
+            diagramaLadder.textContent = "Error al generar el diagrama. Revisa la consola para más detalles.";
+            expresionMinimizada.textContent = "Error: " + error.message;
             alert('Error al generar el diagrama: ' + error.message);
         }
     }
 
     function simularLlamadaAPI(datos) {
-        console.log('Datos enviados a la API:', datos);
-        
-        // Definir la función mostrarAnchos aquí, dentro del ámbito de simularLlamadaAPI
-        function mostrarAnchos() {
-            console.log("anchoTotal:", anchoTotal);
-            console.log("anchoMaximoRung:", anchoMaximoRung);
-            
-            // Solo mostrar información de líneas si están definidas
-            if (typeof linea1 !== 'undefined') {
-                console.log("Longitud línea 1:", linea1.length);
-                console.log("Espacio restante 1:", espacioRestante1);
-            }
-            
-            if (typeof linea2 !== 'undefined') {
-                console.log("Longitud línea 2:", linea2.length);
-                console.log("Espacio restante 2:", espacioRestante2);
-            }
-            
-            if (typeof linea3 !== 'undefined') {
-                console.log("Longitud línea 3:", linea3.length);
-                console.log("Espacio restante 3:", espacioRestante3);
-            }
-        }
         
         // Convertir condiciones a expresiones
         const expresiones = datos.condiciones.map(condicion => {
@@ -860,15 +844,15 @@ document.addEventListener('DOMContentLoaded', function() {
                 const espacioRestante2 = anchoTotal - linea2.length;
                 const espacioRestante3 = anchoTotal - linea3.length;
                 
-                // Ahora es seguro llamar a mostrarAnchos() porque todas las variables están definidas
-                mostrarAnchos();
-                
-                ladder += linea1 + ' '.repeat(espacioRestante1) + '|\n';
-                ladder += linea2 + ' '.repeat(espacioRestante2) + '|\n';
-                ladder += linea3 + '-'.repeat(espacioRestante3) + '|\n';
-                ladder += '|' + ' '.repeat(anchoTotal - 1) + '|\n';
+                ladder += linea1 + ' '.repeat(espacioRestante1 + 1) + '|\n';
+                ladder += linea2 + ' '.repeat(espacioRestante2 + 1) + '|\n';
+                ladder += linea3 + '-'.repeat(espacioRestante3 + 1) + '|\n';
+                ladder += '|' + ' '.repeat(anchoTotal) + '|\n';
             });
         });
+        
+        // Versión más precisa:
+        ladder += '|' + ' '.repeat(anchoTotal) + '|\n';
         
         // Y también en el pie
         ladder += '+' + '-'.repeat(anchoTotal) + '+\n';
@@ -904,13 +888,12 @@ document.addEventListener('DOMContentLoaded', function() {
             });
             
             if (!respuesta.ok) {
-                throw new Error('Error en la respuesta del servidor: ' + respuesta.status);
+                throw new Error(`Error ${respuesta.status}: ${respuesta.statusText}`);
             }
             
             return await respuesta.json();
         } catch (error) {
-            console.error('Error en la llamada a la API:', error);
-            throw error;
+            throw new Error('Error en la comunicación con el servidor: ' + error.message);
         }
     }
 
