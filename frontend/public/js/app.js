@@ -697,7 +697,7 @@ document.addEventListener('DOMContentLoaded', function() {
             diagramaLadder.textContent = "Procesando...";
             expresionMinimizada.textContent = "Procesando...";
             
-            // Llamar al backend real
+            // Llamar al backend
             const respuesta = await llamarAPI(datos);
             
             // Actualizar expresión minimizada
@@ -709,178 +709,18 @@ document.addEventListener('DOMContentLoaded', function() {
             // Mostrar el contenedor del diagrama gráfico
             document.getElementById('ladderDiagram').style.display = 'block';
             
-            // Crear el diagrama Ladder visual con mxGraph
+            // Crear el diagrama Ladder visual con D3.js
             window.ladderGraph = createLadderDiagram("ladderDiagram", datos);
             
             // Habilitar botón de exportar
             btnExportar.disabled = false;
+            
+            console.log("Diagrama generado correctamente");
         } catch (error) {
             console.error('Error al generar el diagrama:', error);
             diagramaLadder.textContent = "Error al generar el diagrama. Revisa la consola para más detalles.";
             expresionMinimizada.textContent = "Error: " + error.message;
             alert('Error al generar el diagrama: ' + error.message);
-        }
-    }
-
-    function simularLlamadaAPI(datos) {
-        
-        // Convertir condiciones a expresiones
-        const expresiones = datos.condiciones.map(condicion => {
-            const salida = datos.salidas.find(s => s.id === condicion.salidaId);
-            
-            // Cada término es un producto (AND) de entradas
-            const terminosTexto = condicion.terminos.map(termino => {
-                return termino.entradas.map(e => {
-                    const entrada = datos.entradas.find(entrada => entrada.id === e.id);
-                    const invertida = (e.estado === 'desactivado');
-                    const normalmente = entrada.normalmente || 'abierto';
-                    
-                    // Ajustar según si es NA o NC
-                    const usarInvertida = (normalmente === 'abierto') ? invertida : !invertida;
-                    
-                    return usarInvertida ? `!${entrada.nombre}` : entrada.nombre;
-                }).join(' & ');
-            }).join(' + ');
-            
-            return `${salida.nombre} = ${terminosTexto}`;
-        });
-        
-        // PRIMERA FASE: Calcular el ancho máximo necesario
-        let anchoMaximoRung = 0;
-        
-        // Hacer un recorrido previo para calcular el ancho máximo
-        datos.condiciones.forEach(condicion => {
-            const salida = datos.salidas.find(s => s.id === condicion.salidaId);
-            
-            condicion.terminos.forEach(termino => {
-                // Calcular ancho para este rung
-                let anchoRung = 1; // Iniciar con el borde izquierdo '|'
-                
-                // Ancho para los contactos
-                termino.entradas.forEach((e, i) => {
-                    if (i > 0) anchoRung += 8; // Separador entre contactos
-                    anchoRung += 9; // Ancho del símbolo del contacto (---[ ]---)
-                });
-                
-                // Ancho para la bobina
-                const anchoBobina = Math.max(16, 10 + Math.max(salida.direccion.length, salida.nombre.length));
-                anchoRung += 8 + anchoBobina; // Espacios alrededor + ancho de bobina
-                
-                // Actualizar el ancho máximo si este rung es más ancho
-                anchoMaximoRung = Math.max(anchoMaximoRung, anchoRung);
-            });
-        });
-        
-        // Añadir margen para evitar que quede muy justo
-        anchoMaximoRung += 2;
-        
-        // SEGUNDA FASE: Generar el diagrama con ancho fijo
-        let anchoTotal = Math.max(60, anchoMaximoRung); // Usar al menos 60 de ancho
-        
-        // Definir la posición fija para las bobinas desde la derecha
-        const posicionBobina = anchoTotal - 20; // 20 caracteres desde el borde derecho
-        
-        // Cabecera del diagrama
-        let ladder = '+' + '-'.repeat(anchoTotal) + '+\n';
-        ladder += '|' + centrarTexto('DIAGRAMA LADDER PLC (IEC 61131-3)', anchoTotal) + '|\n';
-        ladder += '+' + '-'.repeat(anchoTotal) + '+\n';
-        
-        // Generar cada rung (línea) del ladder
-        datos.condiciones.forEach(condicion => {
-            const salida = datos.salidas.find(s => s.id === condicion.salidaId);
-            
-            condicion.terminos.forEach(termino => {
-                // Líneas para cada rung
-                let linea1 = '|'; // Direcciones
-                let linea2 = '|'; // Nombres
-                let linea3 = '|'; // Símbolos de contactos
-                
-                // Generar contactos para cada entrada en el término
-                termino.entradas.forEach((e, i) => {
-                    const entrada = datos.entradas.find(entrada => entrada.id === e.id);
-                    const invertida = (e.estado === 'desactivado');
-                    const normalmente = entrada.normalmente || 'abierto';
-                    
-                    // Ajustar según si es NA o NC
-                    const usarInvertida = (normalmente === 'abierto') ? invertida : !invertida;
-                    
-                    // Símbolos simplificados para contactos (mantenemos estos con guiones)
-                    const simboloContacto = usarInvertida ? '---[/]---' : '---[ ]---';
-                    const anchoContacto = simboloContacto.length;
-                    
-                    // Añadir separador si no es el primer contacto
-                    if (i > 0) {
-                        // Para líneas de texto usamos espacios, no guiones
-                        linea1 += ' '.repeat(8);
-                        linea2 += ' '.repeat(8);
-                        // Solo para la línea de símbolos usamos guiones
-                        linea3 += '--------';
-                    }
-                    
-                    // Centrar dirección y nombre en el espacio del contacto
-                    const direccionCentrada = centrarTexto(entrada.direccion, anchoContacto);
-                    const nombreCentrado = centrarTexto(entrada.nombre, anchoContacto);
-                    
-                    // Añadir elementos alineados
-                    linea1 += direccionCentrada;
-                    linea2 += nombreCentrado;
-                    linea3 += simboloContacto;
-                });
-                
-                // Añadir bobina (salida) alineada a la derecha
-                const anchoBobina = Math.max(16, 10 + Math.max(salida.direccion.length, salida.nombre.length));
-                const direccionCentrada = centrarTexto(salida.direccion, anchoBobina);
-                const nombreCentrado = centrarTexto(salida.nombre, anchoBobina);
-                
-                // Calcular el espacio disponible entre el último contacto y donde debe empezar la bobina
-                const espacioEntreContactosYBobina = posicionBobina - linea3.length;
-                
-                // Rellenar el espacio con guiones o espacios según corresponda
-                if (espacioEntreContactosYBobina > 0) {
-                    linea1 += ' '.repeat(espacioEntreContactosYBobina);
-                    linea2 += ' '.repeat(espacioEntreContactosYBobina);
-                    linea3 += '-'.repeat(espacioEntreContactosYBobina);
-                }
-                
-                // Añadir las etiquetas y bobina (ahora todos alineados a la misma posición)
-                linea1 += direccionCentrada;
-                linea2 += nombreCentrado;
-                linea3 += '( )';
-                
-                // Completar hasta el ancho total
-                const espacioRestante1 = anchoTotal - linea1.length;
-                const espacioRestante2 = anchoTotal - linea2.length;
-                const espacioRestante3 = anchoTotal - linea3.length;
-                
-                ladder += linea1 + ' '.repeat(espacioRestante1 + 1) + '|\n';
-                ladder += linea2 + ' '.repeat(espacioRestante2 + 1) + '|\n';
-                ladder += linea3 + '-'.repeat(espacioRestante3 + 1) + '|\n';
-                ladder += '|' + ' '.repeat(anchoTotal) + '|\n';
-            });
-        });
-        
-        // Versión más precisa:
-        ladder += '|' + ' '.repeat(anchoTotal) + '|\n';
-        
-        // Y también en el pie
-        ladder += '+' + '-'.repeat(anchoTotal) + '+\n';
-        
-        return {
-            expresion: expresiones.join('\n'),
-            ladder: ladder
-        };
-        
-        // Función auxiliar para centrar texto en un ancho dado
-        function centrarTexto(texto, ancho) {
-            // Si el texto es más largo que el ancho disponible, truncarlo
-            const textoAjustado = texto.length > ancho ? texto.substring(0, ancho) : texto;
-            
-            // Calcular espacios necesarios (asegurando valores no negativos)
-            const espacios = Math.max(0, ancho - textoAjustado.length);
-            const izquierda = Math.floor(espacios / 2);
-            const derecha = espacios - izquierda;
-            
-            return ' '.repeat(Math.max(0, izquierda)) + textoAjustado + ' '.repeat(Math.max(0, derecha));
         }
     }
 
@@ -907,39 +747,72 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Actualizar la función exportarDiagrama
     function exportarDiagrama() {
-        const formato = document.getElementById('formato-exportacion').value;
-        
-        if (formato === 'png' || formato === 'jpg') {
-            if (window.ladderGraph) {
-                // Usar la función de exportación de mxGraph
-                const imgData = exportLadderDiagram(window.ladderGraph, formato);
-                
-                if (imgData) {
-                    // Crear un enlace para descargar la imagen
-                    const a = document.createElement('a');
-                    a.href = imgData;
-                    a.download = `diagrama-ladder.${formato}`;
-                    document.body.appendChild(a);
-                    a.click();
-                    document.body.removeChild(a);
-                } else {
-                    alert('Error al exportar la imagen');
-                }
-            }
-        } else if (formato === 'txt') {
-            // Para texto, usar la expresión minimizada
-            const contenido = expresionMinimizada.textContent;
-            const blob = new Blob([contenido], { type: 'text/plain' });
-            const url = URL.createObjectURL(blob);
-            
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = 'diagrama-ladder.txt';
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-        }
-    }
+		try {
+			const formato = document.getElementById('formato-exportacion').value;
+			console.log('Formato de exportación seleccionado:', formato);
+
+			if (formato === 'png' || formato === 'jpg') {
+				const svg = document.querySelector('#ladderDiagram svg');
+				
+				if (svg) {
+					// Clonar SVG para manipulación
+					const clonedSvg = svg.cloneNode(true);
+					const container = document.createElement('div');
+					container.style.display = 'none';
+					container.appendChild(clonedSvg);
+					document.body.appendChild(container);
+					
+					// Configurar para exportación
+					clonedSvg.setAttribute('width', svg.getBoundingClientRect().width);
+					clonedSvg.setAttribute('height', svg.getBoundingClientRect().height);
+					
+					// Convertir a imagen
+					const svgData = new XMLSerializer().serializeToString(clonedSvg);
+					const canvas = document.createElement('canvas');
+					const ctx = canvas.getContext('2d');
+					
+					// Configurar canvas
+					const width = clonedSvg.width.baseVal.value;
+					const height = clonedSvg.height.baseVal.value;
+					canvas.width = width;
+					canvas.height = height;
+					ctx.fillStyle = 'white';
+					ctx.fillRect(0, 0, width, height);
+					
+					// Dibujar SVG en canvas
+					const img = new Image();
+					img.onload = function() {
+						ctx.drawImage(img, 0, 0);
+						
+						// Crear enlace de descarga
+						const a = document.createElement('a');
+						a.href = canvas.toDataURL(`image/${formato === 'jpg' ? 'jpeg' : 'png'}`);
+						a.download = `diagrama-ladder.${formato}`;
+						a.click();
+						
+						// Limpiar
+						document.body.removeChild(container);
+					};
+					img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgData)));
+				}
+			} else if (formato === 'txt') {
+				// Mantener la exportación de texto como estaba
+				const contenido = expresionMinimizada.textContent;
+				const blob = new Blob([contenido], { type: 'text/plain' });
+				const url = URL.createObjectURL(blob);
+				
+				const a = document.createElement('a');
+				a.href = url;
+				a.download = 'diagrama-ladder.txt';
+				document.body.appendChild(a);
+				a.click();
+				document.body.removeChild(a);
+			}
+		} catch (error) {
+			console.error('Error al exportar el diagrama:', error);
+			alert('Error al exportar el diagrama: ' + error.message);
+		}
+	}
 
     function resetearAplicacion() {
         if (confirm('¿Estás seguro de que deseas reiniciar la aplicación? Se perderán todos los datos.')) {

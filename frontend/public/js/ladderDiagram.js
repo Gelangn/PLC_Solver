@@ -1,371 +1,340 @@
 // frontend/public/js/ladderDiagram.js
 
-function withTimeout(milliseconds, promise) {
-    return new Promise((resolve, reject) => {
-        const timer = setTimeout(() => {
-            reject(new Error(`Tiempo de operación excedido (${milliseconds}ms)`));
-        }, milliseconds);
-        
-        promise.then(value => {
-            clearTimeout(timer);
-            resolve(value);
-        }).catch(error => {
-            clearTimeout(timer);
-            reject(error);
-        });
-    });
-}
-
-if (typeof mxGraph === 'undefined') {
-    console.error('¡Error! mxGraph no está cargado correctamente.');
-    console.log('Variables globales disponibles:', Object.keys(window));
-}
-
 function createLadderDiagram(containerId, data) {
-    // Comprobar si mxGraph está disponible
-    if (typeof mxGraph === 'undefined') {
-        console.error('mxGraph no está cargado');
-        return;
-    }
-    
-    // Obtener el contenedor
-    const container = document.getElementById(containerId);
-    if (!container) {
-        console.error('Contenedor no encontrado:', containerId);
-        return;
-    }
-    
     // Limpiar el contenedor
+    const container = document.getElementById(containerId);
     container.innerHTML = '';
     
-    // Establecer una altura mínima basada en el número de condiciones
-    const minHeight = Math.max(800, (data.condiciones.length * 300));
-    container.style.height = minHeight + 'px';
-    container.style.overflow = 'auto'; // Permitir desplazamiento en ambas direcciones
+    // Dimensiones y configuración
+    const margin = { top: 40, right: 120, bottom: 40, left: 70 };
+    const railHeight = 100;
+    const contactWidth = 80;
+    const contactHeight = 40;
+    const contactSpacing = 60;
     
-    // Configurar mxGraph
-    if (!mxClient.isBrowserSupported()) {
-        container.innerHTML = 'El navegador no es compatible con mxGraph';
-        return;
-    }
+    // Calcular altura total necesaria
+    const totalHeight = data.condiciones.reduce((acc, condicion) => 
+        acc + (condicion.terminos.length * railHeight) + 50, 0);
     
-    // Crear el editor de gráficos
-    const graph = new mxGraph(container);
+    // Calcular ancho total necesario
+    const maxContactsPerTerm = Math.max(...data.condiciones.map(c => 
+        Math.max(...c.terminos.map(t => t.entradas.length))));
+    const minWidth = margin.left + (maxContactsPerTerm * (contactWidth + contactSpacing)) + 200;
     
-    // Desactivar eventos temporalmente
-    graph.getView().setEventsEnabled(false);
+    // Crear el SVG con dimensiones adecuadas
+    const svg = d3.select(container)
+        .append("svg")
+        .attr("width", "100%")
+        .attr("height", totalHeight + margin.top + margin.bottom)
+        .attr("viewBox", `0 0 ${Math.max(minWidth, 800)} ${totalHeight + margin.top + margin.bottom}`)
+        .attr("preserveAspectRatio", "xMidYMid meet");
     
-    // Configuración del gráfico
-    graph.setConnectable(false);
-    graph.setCellsEditable(false);
-    graph.setCellsMovable(false);
-    graph.setCellsResizable(false);
-    graph.setCellsDeletable(false);
-    graph.setDropEnabled(false);
-    graph.setPanning(true);
-    graph.centerZoom = false;
-    graph.setHtmlLabels(true);
-    
-    // Añadir zoom con rueda del ratón
-    graph.mouseWheelEnabled = true;
-    
-    // AJUSTE CRÍTICO: Eliminar flechas en las conexiones
-    const edgeStyle = graph.getStylesheet().getDefaultEdgeStyle();
-    edgeStyle[mxConstants.STYLE_ROUNDED] = false;
-    edgeStyle[mxConstants.STYLE_STROKEWIDTH] = 2;
-    edgeStyle[mxConstants.STYLE_STROKECOLOR] = '#333333';
-    edgeStyle[mxConstants.STYLE_EDGE] = mxEdgeStyle.OrthConnector;
-    edgeStyle[mxConstants.STYLE_ENDARROW] = mxConstants.NONE; // Eliminar flechas
-    edgeStyle[mxConstants.STYLE_STARTARROW] = mxConstants.NONE; // Eliminar flechas
-    
-    // Crear estilos para los elementos de Ladder
-    const railStyle = 'strokeWidth=3;strokeColor=#333333;';
-    
-    // Crear parentVertex como contenedor principal
-    const parent = graph.getDefaultParent();
-    
-    // Iniciar modificación del modelo
-    graph.getModel().beginUpdate();
-    
-    try {
-        // Dimensiones y espaciado
-        const railHeight = 100;  // Altura entre rieles horizontales
-        const contactWidth = 80;  // Aumentado de 60 a 80
-        const contactSpacing = 60;  // Aumentado de 40 a 60
-        const railLeftMargin = 70;  // Aumentado de 50 a 70
-        const railRightMargin = 120;  // Aumentado de 50 a 120 para dar más espacio a la bobina
-        const marginTop = 40;  // Margen superior
-
+    // Grupo principal con margen
+    const g = svg.append("g")
+        .attr("transform", `translate(${margin.left},${margin.top})`);
         
-        // Ancho total disponible
-        const minWidth = 1200;  // Ancho mínimo garantizado
-        const totalWidth = Math.max(minWidth, container.offsetWidth - railLeftMargin - railRightMargin);
+    // Función para añadir zoom
+    const zoom = d3.zoom()
+        .scaleExtent([0.5, 2])
+        .on("zoom", (event) => {
+            g.attr("transform", event.transform);
+        });
+    
+    svg.call(zoom);
+    
+    // Procesar cada condición
+    let offsetY = 0;
+    
+    data.condiciones.forEach((condicion, condIdx) => {
+        const salida = data.salidas.find(s => s.id === condicion.salidaId);
+        const startY = offsetY;
+        const conditionHeight = condicion.terminos.length * railHeight;
+		
+		
+        // Crear el grupo para esta condición
+        const conditionGroup = g.append("g")
+		.attr("class", "condition")
+		.attr("transform", `translate(0,${startY})`);
+		
+		// Calcular la posición del riel derecho
+		const rightRailX = minWidth - margin.left - margin.right;
         
-        // Para cada condición (una por salida)
-        data.condiciones.forEach((condicion, condIdx) => {
-            const salida = data.salidas.find(s => s.id === condicion.salidaId);
-            const verticalSpacing = 150; // Espacio adicional entre condiciones
-            const startY = marginTop + condIdx * (railHeight * (condicion.terminos.length + 1) + verticalSpacing);
-            
-            // Rieles verticales (bus de alimentación izquierdo)
-            const leftBus = graph.insertVertex(
-                parent, null, '', 
-                railLeftMargin, startY, 
-                5, (condicion.terminos.length * railHeight) + railHeight/2, 
-                railStyle
-            );
-            
-            // Riel vertical derecho (cerca de la bobina)
-            const rightBus = graph.insertVertex(
-                parent, null, '', 
-                totalWidth - railRightMargin, startY, 
-                5, (condicion.terminos.length * railHeight) + railHeight/2, 
-                railStyle
-            );
-            
-            // Posición central para la bobina
-            const coilY = startY + railHeight/2; // Alinear con el primer término
-            
-            // Crear la etiqueta de salida
-            graph.insertVertex(
-                parent, null, 
-                `<div style="text-align:center;">
-                    <div style="font-size:11px;color:#444;">${salida.direccion}</div>
-                    <div style="font-weight:bold;">${salida.nombre}</div>
-                </div>`, 
-                totalWidth - railRightMargin - 120, coilY - 40, 
-                100, 30, 'strokeColor=none;fillColor=none;'
-            );
-            
-            // Crear la bobina (dibujo manual más claro)
-            const coilX = totalWidth - railRightMargin - 100; // Mover más a la izquierda
+		// Posición de la bobina (más a la derecha)
+        const coilY = railHeight / 2;
+        const coilX = rightRailX - 60; // Cambiar de 80 a 60 para mover a la derecha
+        
+        // Calcular la posición X para la línea vertical común (punto de unión OR)
+        let maxContactEndX = 0;
 
-            // Círculo de la bobina con paréntesis claros
-            const coil = graph.insertVertex(
-                parent, null, '( )', 
-                coilX, coilY - 20, 
-                50, 40, 'shape=ellipse;perimeter=ellipsePerimeter;strokeWidth=2;fillColor=white;fontStyle=1;fontSize=16;align=center;'
-            );
+        // PRIMER PASO: Calcular la posición final del contacto más alejado entre todos los términos
+        condicion.terminos.forEach(t => {
+            const numContactos = t.entradas.length;
+            const finalPos = 30 + (numContactos * (contactWidth + contactSpacing));
+            if (finalPos > maxContactEndX) maxContactEndX = finalPos;
+        });
+
+        // Ajustar para considerar el ancho del último contacto y dejar espacio
+        maxContactEndX = Math.max(maxContactEndX - contactSpacing + 30, coilX - 100);
+
+        // Rieles verticales (bus de alimentación)
+        conditionGroup.append("line")
+            .attr("class", "rail")
+            .attr("x1", 0)
+            .attr("y1", 0)
+            .attr("x2", 0)
+            .attr("y2", conditionHeight)
+            .style("stroke", "#333")
+            .style("stroke-width", 3);
             
-            // Línea horizontal conectando la bobina con el riel derecho
-            const coilRightConn = graph.insertVertex(
-                parent, null, '', 
-                coilX + 40, coilY, 
-                totalWidth - railRightMargin - (coilX + 40), 3, 
-                railStyle
-            );
+        // Riel vertical derecho
+        conditionGroup.append("line")
+            .attr("class", "rail")
+            .attr("x1", rightRailX)
+            .attr("y1", 0)
+            .attr("x2", rightRailX)
+            .attr("y2", conditionHeight)
+            .style("stroke", "#333")
+            .style("stroke-width", 3);
+        
+ 
+        // Dibujar bobina
+        const coilGroup = conditionGroup.append("g")
+            .attr("transform", `translate(${coilX},${coilY})`);
+        
+		// Paréntesis izquierdo "(" más estrecho
+		coilGroup.append("path")
+			.attr("d", "M -8,20 A 8,22 0 0,1 -8,-20") // Reducido primer valor de 15 a 8
+			.style("fill", "none")
+			.style("stroke", "#333")
+			.style("stroke-width", 2);
+		
+		// Paréntesis derecho ")" más estrecho  
+		coilGroup.append("path")
+			.attr("d", "M 8,-20 A 8,22 0 0,1 8,20") // Reducido primer valor de 15 a 8
+			.style("fill", "none")
+			.style("stroke", "#333")
+			.style("stroke-width", 2);
+
+        // Línea de conexión izquierda de la bobina
+        coilGroup.append("line")
+            .attr("x1", -25)
+            .attr("y1", 0)
+            .attr("x2", -15)
+            .attr("y2", 0)
+            .style("stroke", "#333")
+            .style("stroke-width", 2);
+
+        // Línea de conexión derecha de la bobina
+        coilGroup.append("line")
+            .attr("x1", 15)
+            .attr("y1", 0)
+            .attr("x2", 25)
+            .attr("y2", 0)
+            .style("stroke", "#333")
+            .style("stroke-width", 2);
+
+        // Etiqueta de dirección
+        coilGroup.append("text")
+            .attr("x", 0)
+            .attr("y", -45)
+            .style("text-anchor", "middle")
+            .style("font-size", "11px")
+			.style("fill", "#666")
+            .text(salida.direccion);
+
+        // Etiqueta nombre
+        coilGroup.append("text")
+            .attr("x", 0)
+            .attr("y", -25)
+            .style("text-anchor", "middle")
+			.style("font-size", "12px")
+            .style("font-weight", "bold")
+            .text(salida.nombre);
             
-            // Crear un array para almacenar los rieles horizontales
-            const horizontalRails = [];
+        // Línea horizontal conectando bobina al riel derecho
+        conditionGroup.append("line")
+            .attr("x1", coilX + 20)
+            .attr("y1", coilY)
+            .attr("x2", rightRailX)
+            .attr("y2", coilY)
+            .style("stroke", "#333")
+            .style("stroke-width", 2);
+       
             
-            // Para cada término (OR)
-            condicion.terminos.forEach((termino, termIdx) => {
-                const railY = startY + termIdx * railHeight;
+        // Procesar cada término (OR)
+        condicion.terminos.forEach((termino, termIdx) => {
+            const railY = termIdx * railHeight + railHeight / 2;
+            
+            // Añadir contactos (entradas AND en serie)
+            let contactX = 30; // Posición inicial desde el riel
+            const contactos = [];
+            
+            // Primera conexión desde el riel izquierdo hasta el primer contacto
+            conditionGroup.append("line")
+                .attr("class", "term-rail")
+                .attr("x1", 0)
+                .attr("y1", railY)
+                .attr("x2", contactX)
+                .attr("y2", railY)
+                .style("stroke", "#333")
+                .style("stroke-width", 2);
+            
+            // Procesar todos los contactos de este término
+            termino.entradas.forEach((entrada, entradaIdx) => {
+                const entradaObj = data.entradas.find(e => e.id === entrada.id);
+                const invertida = (entrada.estado === 'desactivado');
+                const normalmente = entradaObj.normalmente || 'abierto';
+                const usarInvertida = (normalmente === 'abierto') ? invertida : !invertida;
                 
-                // Rail horizontal principal (línea del término)
-                const leftRail = graph.insertVertex(
-                    parent, null, '',
-                    railLeftMargin + 5, railY + railHeight/2,
-                    termIdx === 0 ? coilX - (railLeftMargin + 5) : coilX - 100 - (railLeftMargin + 5), 3,
-                    railStyle
-                );
+                // Grupo para el contacto
+                const contactGroup = conditionGroup.append("g")
+                    .attr("transform", `translate(${contactX},${railY})`);
                 
-                // Guardar referencia al rail horizontal en el array
-                horizontalRails.push(leftRail);
-                
-                // Diferentes conexiones según sea el primer término o no
-                if (termIdx === 0) {
-                    // Para el primer término, conexión directa a la bobina
-                    // No se necesita crear conexiones adicionales
-                } else {
-                    // Línea vertical de conexión (forma la estructura de escalera)
-                    const vertConn = graph.insertVertex(
-                        parent, null, '',
-                        coilX - 100, startY + railHeight/2, // Inicia desde la altura del primer término
-                        3, railY + railHeight/2 - (startY + railHeight/2), // Se extiende hasta el término actual
-                        railStyle
-                    );
+                // Línea izquierda del contacto
+                contactGroup.append("line")
+                    .attr("x1", 0)  
+                    .attr("y1", 0)
+                    .attr("x2", contactWidth/3)
+                    .attr("y2", 0)
+                    .style("stroke", "#333")
+                    .style("stroke-width", 2);
                     
-                    // Conexión horizontal desde el riel del término hasta la línea vertical
-                    const horizConn = graph.insertVertex(
-                        parent, null, '',
-                        leftRail.geometry.x + leftRail.geometry.width, railY + railHeight/2,
-                        coilX - 100 - (leftRail.geometry.x + leftRail.geometry.width), 3,
-                        railStyle
-                    );
+                // Línea derecha del contacto
+                contactGroup.append("line")
+                    .attr("x1", contactWidth*2/3)
+                    .attr("y1", 0)
+                    .attr("x2", contactWidth)
+                    .attr("y2", 0)
+                    .style("stroke", "#333")
+                    .style("stroke-width", 2);
+                    
+                // Para contactos NA (normalmente abiertos)
+                if (!usarInvertida) {
+                    // Dos líneas paralelas verticales
+                    contactGroup.append("line")
+                        .attr("x1", contactWidth/3)
+                        .attr("y1", -contactHeight/2)
+                        .attr("x2", contactWidth/3)
+                        .attr("y2", contactHeight/2)
+                        .style("stroke", "#333")
+                        .style("stroke-width", 2);
+                        
+                    contactGroup.append("line")
+                        .attr("x1", contactWidth*2/3)
+                        .attr("y1", -contactHeight/2)
+                        .attr("x2", contactWidth*2/3)
+                        .attr("y2", contactHeight/2)
+                        .style("stroke", "#333")
+                        .style("stroke-width", 2);
+                } 
+                // Para contactos NC (normalmente cerrados) - CORREGIR
+                else {
+                    // Dos líneas verticales
+                    contactGroup.append("line")
+                        .attr("x1", contactWidth/3)
+                        .attr("y1", -contactHeight/2)
+                        .attr("x2", contactWidth/3)
+                        .attr("y2", contactHeight/2)
+                        .style("stroke", "#333")
+                        .style("stroke-width", 2);
+                        
+                    contactGroup.append("line")
+                        .attr("x1", contactWidth*2/3)
+                        .attr("y1", -contactHeight/2)
+                        .attr("x2", contactWidth*2/3)
+                        .attr("y2", contactHeight/2)
+                        .style("stroke", "#333")
+                        .style("stroke-width", 2);
+                        
+                    // LÍNEA DIAGONAL
+                    contactGroup.append("line")
+                        .attr("x1", contactWidth/3 + 5)
+                        .attr("y1", contactHeight/2 - 5)
+                        .attr("x2", contactWidth*2/3 - 5)
+                        .attr("y2", -contactHeight/2 + 5)
+                        .style("stroke", "#333")
+                        .style("stroke-width", 2);
                 }
-                
-                // Crear entradas (contactos en serie - AND)
-                let lastContactEnd = railLeftMargin + 5; // Inicio desde el riel izquierdo
-                
-                // Modifica la sección donde se calculan las posiciones de los contactos:
-                // Calcular mejor el espacio disponible para contactos
-                const spaceForContacts = coilX - (railLeftMargin + 30);
-                const totalContactsInTerm = termino.entradas.length;
 
-                // Distribuir mejor los contactos si hay muchos
-                const contactsWidth = (totalContactsInTerm * contactWidth) + ((totalContactsInTerm - 1) * contactSpacing);
-                const scaleFactorIfNeeded = contactsWidth > spaceForContacts ? spaceForContacts / contactsWidth : 1;
-                const adjustedContactWidth = contactWidth * scaleFactorIfNeeded;
-                const adjustedSpacing = contactSpacing * scaleFactorIfNeeded;
-
-                termino.entradas.forEach((entrada, entradaIdx) => {
-                    const entradaObj = data.entradas.find(e => e.id === entrada.id);
-                    const invertida = (entrada.estado === 'desactivado');
-                    const normalmente = entradaObj.normalmente || 'abierto';
-                    const usarInvertida = (normalmente === 'abierto') ? invertida : !invertida;
+                // DIRECCIÓN (encima del contacto)
+                contactGroup.append("text")
+                    .attr("x", contactWidth / 2)
+                    .attr("y", -contactHeight - 5)
+                    .style("text-anchor", "middle")
+                    .style("font-size", "11px")
+                    .style("fill", "#666")
+                    .text(entradaObj.direccion);
                     
-                    // Posición para este contacto
-                    const spacing = entradaIdx > 0 ? adjustedSpacing : 20;
-                    const posX = lastContactEnd + spacing;
-                    const contactHeight = 40;
+                // NOMBRE (debajo de la dirección pero encima del contacto)
+                contactGroup.append("text")
+                    .attr("x", contactWidth / 2)
+                    .attr("y", -contactHeight/2 - 5)
+                    .style("text-anchor", "middle")
+                    .style("font-size", "12px")
+                    .style("font-weight", "bold")
+                    .text(entradaObj.nombre);
                     
-                    // Etiqueta del contacto (encima)
-                    graph.insertVertex(
-                        parent, null,
-                        `<div style="text-align:center;">
-                            <div style="font-size:11px;color:#444;">${entradaObj.direccion}</div>
-                            <div style="font-weight:bold;">${entradaObj.nombre}</div>
-                        </div>`,
-                        posX, railY + railHeight/2 - contactHeight - 10,
-                        adjustedContactWidth, 30,
-                        'strokeColor=none;fillColor=none;'
-                    );
-                    
-                    // Dibujar el contacto manualmente para mejor control
-                    // Líneas conectoras laterales
-                    graph.insertVertex(
-                        parent, null, '',
-                        posX, railY + railHeight/2,
-                        10, 3,
-                        railStyle
-                    );
-                    
-                    graph.insertVertex(
-                        parent, null, '',
-                        posX + adjustedContactWidth - 10, railY + railHeight/2,
-                        10, 3,
-                        railStyle
-                    );
-                    
-                    // Rectángulo del contacto con corchetes visibles [ ]
-                    const contactStyle = usarInvertida 
-                        ? 'strokeWidth=2;fillColor=white;fontStyle=1;fontSize=14;align=center;verticalAlign=middle;' 
-                        : 'strokeWidth=2;fillColor=white;fontStyle=1;fontSize=14;align=center;verticalAlign=middle;';
-
-                    const contactLabel = usarInvertida ? '[/]' : '[ ]';
-
-                    const contact = graph.insertVertex(
-                        parent, null, contactLabel,
-                        posX + 10, railY + railHeight/2 - 15,
-                        adjustedContactWidth - 20, 30,
-                        contactStyle
-                    );
-                    
-                    // Actualizar la posición para el siguiente contacto
-                    lastContactEnd = posX + adjustedContactWidth;
+                // Guardar la posición para conexiones
+                contactos.push({
+                    x: contactX,
+                    width: contactWidth
                 });
+                
+                // Actualizar posición X para el siguiente contacto
+                contactX += contactWidth + contactSpacing;
+                
+                // Si no es el último contacto, añadir la línea horizontal de conexión al siguiente
+                if (entradaIdx < termino.entradas.length - 1) {
+                    conditionGroup.append("line")
+                        .attr("x1", contactX - contactSpacing)
+                        .attr("y1", railY)
+                        .attr("x2", contactX)
+                        .attr("y2", railY)
+                        .style("stroke", "#333")
+                        .style("stroke-width", 2);
+                } 
+                // Si es el último contacto Y no es el primer término, añadir conexión vertical
+                else if (termIdx > 0) {
+                    // Posición vertical del término superior
+                    const termSuperiorY = (termIdx - 1) * railHeight + railHeight / 2;
+                    
+                    // Línea vertical hacia arriba
+                    conditionGroup.append("line")
+                        .attr("x1", contactX - contactSpacing)
+                        .attr("y1", railY)
+                        .attr("x2", contactX - contactSpacing)
+                        .attr("y2", termSuperiorY)
+                        .style("stroke", "#333")
+                        .style("stroke-width", 2);
+                    
+                    // Es importante que coincida con la línea horizontal del término superior
+                }
             });
             
-            // Conectar la bobina al riel horizontal del término del medio
-            if (condicion.terminos.length === 1) {
-                // Si solo hay un término, conectar directamente
-                const leftRail = horizontalRails[0]; // Usar la referencia guardada
-                
-                graph.insertVertex(
-                    parent, null, '',
-                    leftRail.geometry.x + leftRail.geometry.width, coilY,
-                    coilX - (leftRail.geometry.x + leftRail.geometry.width), 3,
-                    railStyle
-                );
+            // Calcular la posición final del último contacto
+            const ultimoContactoX = contactos.length > 0 
+                ? contactos[contactos.length - 1].x + contactWidth 
+                : 30;
+            
+            // Línea horizontal desde el último contacto hasta la bobina o punto de conexión OR
+            // ESTO DEBE IR FUERA DEL BUCLE DE ENTRADAS, después de procesar todos los contactos
+            if (termIdx === 0) {
+                // Para el primer término: conectar directamente a la bobina
+                conditionGroup.append("line")
+                    .attr("x1", ultimoContactoX)
+                    .attr("y1", railY)
+                    .attr("x2", coilX - 20)
+                    .attr("y2", railY)
+                    .style("stroke", "#333")
+                    .style("stroke-width", 2);
+            } else {
+                // Para términos adicionales: no agregar línea horizontal adicional
+                // La conexión vertical ya se encargó de unirlo al término superior
             }
-
-            // Agregar la conexión final desde la unión vertical a la bobina
-            const finalConn = graph.insertVertex(
-                parent, null, '',
-                coilX - 100, coilY,
-                100, 3,
-                railStyle
-            );
         });
-    } finally {
-        // Terminar actualización del modelo
-        graph.getModel().endUpdate();
-    }
-    
-    // Ajustar vista para que se vea todo el diagrama
-    graph.fit(false, true, 20); // Mantener proporción, centrar, con margen
-
-    // Reemplaza el código de ajuste de zoom con este:
-    // Calcular mejor el factor de escala inicial
-    const containerWidth = container.offsetWidth;
-    const containerHeight = container.offsetHeight;
-    const graphBounds = graph.getGraphBounds();
-    const scaleX = (containerWidth - 40) / graphBounds.width;
-    const scaleY = (containerHeight - 40) / graphBounds.height;
-    const scale = Math.min(scaleX, scaleY, 1.0); // No hacer zoom in (máximo 1.0)
-
-    if (scale < 1.0) {
-        graph.zoomTo(scale);
-    }
-
-    // Centrar el diagrama
-    graph.center(true);
-
-    // Si el diagrama es muy grande, ajustar el zoom inicial
-    if (graph.view.getScale() < 0.6) {
-        graph.zoomTo(0.8);
-    }
-    
-    // Añade esto después de la creación del diagrama:
-    // Si el diagrama es más ancho que el contenedor, activar desplazamiento horizontal
-    if (graph.getGraphBounds().width > container.offsetWidth) {
-        container.style.overflowX = 'auto';
-    }
-
-    // Si el diagrama es más alto que el contenedor, activar desplazamiento vertical
-    if (graph.getGraphBounds().height > container.offsetHeight) {
-        container.style.overflowY = 'auto';
-    }
-    
-    return graph;
-}
-
-// Función para exportar el diagrama como imagen
-function exportLadderDiagram(graph, format) {
-    if (!graph) {
-        console.error('El gráfico no está inicializado');
-        return null;
-    }
-    
-    const bg = '#FFFFFF';
-    const bounds = graph.getGraphBounds();
-    const scale = 1.5; // Mayor escala para mejor calidad
-    
-    // Crear un canvas para la exportación
-    const canvas = document.createElement('canvas');
-    const w = Math.round(bounds.width * scale + 10);
-    const h = Math.round(bounds.height * scale + 10);
-    canvas.width = w;
-    canvas.height = h;
-    
-    const ctx = canvas.getContext('2d');
-    ctx.fillStyle = bg;
-    ctx.fillRect(0, 0, w, h);
-    
-    // Dibujar el diagrama en el canvas
-    const svgRoot = graph.getSvg(bg, scale, 0, 0);
-    const xml = new XMLSerializer().serializeToString(svgRoot);
-    
-    return new Promise((resolve, reject) => {
-        const img = new Image();
-        img.onload = function() {
-            ctx.drawImage(img, 0, 0);
-            resolve(canvas.toDataURL('image/' + (format === 'jpg' ? 'jpeg' : 'png')));
-        };
-        img.onerror = function(e) {
-            reject(new Error('Error al generar la imagen: ' + e));
-        };
-        img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(xml)));
+        
+        offsetY += conditionHeight + 50;
     });
+
+    return svg.node();
 }

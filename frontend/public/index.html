@@ -5,12 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Optimizador PLC - Generador de Lógica</title>
     <link rel="stylesheet" href="css/styles.css">
-    <!-- mxGraph (diagrams.net) -->
-    <script src="https://jgraph.github.io/mxgraph/javascript/mxClient.js"></script>
-    <script>
-        // Evitar errores de carga en algunos navegadores
-        mxBasePath = 'https://jgraph.github.io/mxgraph/javascript/src';
-    </script>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
 </head>
 <body>
     <header>
@@ -105,8 +100,9 @@
                 <div class="download-section">
                     <button id="btn-exportar" class="btn-primary" disabled>Exportar Diagrama</button>
                     <select id="formato-exportacion">
-                        <option value="texto">Texto</option>
-                        <option value="imagen">Imagen</option>
+                        <option value="png">PNG</option>
+                        <option value="jpg">JPG</option>
+                        <option value="txt">Texto</option>
                     </select>
                 </div>
             </div>
