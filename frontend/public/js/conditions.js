@@ -381,16 +381,20 @@ const conditions = (() => {
             const accionesDiv = document.createElement('div');
             accionesDiv.className = 'condicion-acciones';
             
+            // Cambiar botón editar por ícono
             const btnEditar = document.createElement('button');
-            btnEditar.className = 'btn-secundario';
-            btnEditar.textContent = 'Editar';
+            btnEditar.className = 'btn-icon';  // Cambiado de 'btn-secundario' a 'btn-icon'
+            btnEditar.textContent = '✏️';      // Icono de lápiz en lugar de texto
+            btnEditar.title = "Editar condición"; // Añadir título para accesibilidad
             btnEditar.addEventListener('click', function() {
                 editarCondicion(condicion.id);
             });
             
+            // Cambiar botón eliminar por ícono
             const btnEliminar = document.createElement('button');
-            btnEliminar.className = 'btn-danger';
-            btnEliminar.textContent = 'Eliminar';
+            btnEliminar.className = 'btn-icon';  // Cambiado de 'btn-danger' a 'btn-icon'
+            btnEliminar.textContent = '🗑️';      // Icono de papelera en lugar de texto
+            btnEliminar.title = "Eliminar condición"; // Añadir título para accesibilidad
             btnEliminar.addEventListener('click', function() {
                 eliminarCondicion(condicion.id);
             });
